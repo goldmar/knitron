@@ -1,5 +1,5 @@
 #' Starts an IPython cluster with one engine
-#' 
+#'
 #' @param profile the name of the profile
 #' @param wait wait for the engine to start up
 #' @param quiet be quiet about IPython's startup messages
@@ -11,7 +11,7 @@ knitron.start <- function(profile = "knitr", wait = TRUE) {
   flog.info(paste("Starting cluster for profile", profile, "via",
                   ipcluster, paste(args, collapse = " ")), name = "knitron")
   system2(ipcluster, args, wait = FALSE, stderr = tmp)
-  
+
   # Keep a list so that we can kill the clusters later
   .knitron_env$profiles <- append(.knitron_env$profiles, profile)
 
@@ -32,7 +32,7 @@ knitron.start <- function(profile = "knitr", wait = TRUE) {
       }
     }
     flog.info("Engine started up successfully")
-    
+
     if (knitron.is_running(profile)) {
       flog.info(paste("Communication with engine for profile", profile, "succeeded"))
     } else {
@@ -44,7 +44,7 @@ knitron.start <- function(profile = "knitr", wait = TRUE) {
 }
 
 #' Check for invalid Python 2/3 combinations
-#' 
+#'
 #' @param profile the name of the profile
 #' @export
 knitron.checkversion <- function(profile) {
@@ -55,17 +55,17 @@ knitron.checkversion <- function(profile) {
   ipython_version <- system2(python,
                              "-c 'import sys;print(sys.version_info.major)'",
                              stdout = TRUE)
-  
+
   if (ipcluster_version != ipython_version) {
     flog.warn(paste("Version mismatch: ", python, " has version ", ipython_version,
                     ", but ", ipcluster, " is of version ", ipcluster_version, ". ",
-                    "This will likely result in unicode errors. ", 
+                    "This will likely result in unicode errors. ",
                     "Please set options(ipython = IPYTHON_PATH, ipcluster = IPCLUSTER_PATH).", sep = ""))
   }
 }
 
 #' Stops an IPython cluster
-#' 
+#'
 #' @param profile the name of the profile
 #' @param quiet be quiet about IPython's shutdown messages
 #' @export
@@ -78,13 +78,13 @@ knitron.stop <- function(profile = "knitr", quiet = TRUE) {
 }
 
 #' Returns true if the cluster is running
-#' 
+#'
 #' @param profile the name of the profile
 #' @return \code{TRUE} if cluster is running
 #' @export
 knitron.is_running <- function(profile = "knitr") {
   python <- getOption("ipython", "ipython")
-  
+
   profiles <- gsub("^\\s+|\\s+$", "", system2(python, c("profile",  "list"), stdout = TRUE))
   if (profile %in% profiles) {
     profile_dir <- system2(python, c("profile", "locate", profile), stdout = TRUE)
@@ -93,15 +93,15 @@ knitron.is_running <- function(profile = "knitr") {
   } else {
     return(FALSE)
   }
-  
+
   args <- paste(.knitron_env$knitron_wrapper, profile, "isrunning")
   flog.debug(paste("Executing", python, args), name = "knitron")
   res <- system2(python, args, wait = TRUE, stdout = TRUE, stderr = TRUE)
-  tail(res, 1) == "True"
+  grepl("True", res)
 }
 
 #' Execute a code chunk from a knitr option list
-#' 
+#'
 #' @param options a knitr option list
 #' @param profile the name of the profile
 #' @return a data frame of messages from the Python wrapper
@@ -118,7 +118,7 @@ knitron.execute_chunk <- function(options, profile = "knitr") {
 }
 
 #' Execute a single Python command
-#' 
+#'
 #' @param code the command to execute
 #' @param profile the name of the profile
 #' @return the command's stdout and stderr
@@ -147,7 +147,7 @@ knitron.execute_code <- function(code, profile = "knitr") {
 }
 
 #' An IPython engine that can be registered with knitr
-#' 
+#'
 #' @param options an knitr option list
 #' @return output for knitr
 #' @export
@@ -169,15 +169,15 @@ eng_ipython = function(options) {
   if (!profile %in% .knitron_env$profiles)
     if (!knitron.is_running(profile))
       knitron.start(profile)
-  
+
   # We set the engine to python for further processing (highlighting)
   options$engine <- "python"
 
   if (paste(options$code, sep = "", collapse = "") == "")
     return(knitr::engine_output(options, options$code, NULL, NULL))
-  
+
   knitron.checkversion(profile)
-  
+
   result <- knitron.execute_chunk(koptions, profile)
 
   out <- paste(result$stdout, result$stderr,
